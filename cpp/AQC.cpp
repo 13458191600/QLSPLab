@@ -19,7 +19,7 @@ tuple<int, int, int, VectorXd, int, double, int> setting(MatrixXd A, VectorXd b,
 
 MatrixXd get_H0(VectorXd b) {
     MatrixXd Q_b = MatrixXd::Identity(b.size(), b.size()) - b * b.adjoint();
-    MatrixXd H0 = kroneckerProduct(Matrix2d::Identity() - Matrix2d::Identity() * 0.5, Q_b).eval();
+    MatrixXcd H0 = kroneckerProduct(Matrix2d::Identity() - Matrix2d::Identity() * 0.5, Q_b).cast<complex<double>>();
     return H0;
 }
 MatrixXcd block_encoding_method(MatrixXcd SparseHamiltonian){
@@ -32,27 +32,26 @@ MatrixXd get_H1(MatrixXd A, VectorXd b) {
     sigmaplus << 0, 1, 0, 0;
     MatrixXd sigmaminus(A.rows(), A.cols());
     sigmaminus << 0, 0, 1, 0;
-    MatrixXd H1 = kroneckerProduct(sigmaplus, A * Q_b).eval()
-                + kroneckerProduct(sigmaminus, Q_b * A).eval();
+    MatrixXcd H1 = kroneckerProduct(sigmaplus, A * Q_b).cast<complex<double>>()
+                + kroneckerProduct(sigmaminus, Q_b * A).cast<complex<double>>();
     return H1;
 }
-void initialize(QCircuit& qc, QVec& qvec, vector& bdata) {
+void initialize(QCircuit& qc, QVec& qvec, std::vector<double>& bdata) {
     Encode encode_b;
     encode_b.amplitude_encode(qvec, bdata);
-    prog << encode_b.get_circuit();
-    qc << prog;
+    qc << encode_b.get_circuit();
 }
 
 
-void discrete_step(QCircuit& qc, QVec& qvec, MatrixXd H0, MatrixXd H1, double f, int n, int M, double T) {
+void discrete_step(QCircuit& qc, QVec& qvec, MatrixXcd H0, MatrixXcd H1, double f, int n, int M, double T) {
     int dim = H0.rows();
     // Create an identity matrix of complex numbers
     MatrixXcd I = MatrixXcd::Identity(dim, dim);
     MatrixXcd A1 =  I + complex<double>(0, -(1 - f) * f / M * T)*H0;
     MatrixXcd A2 = I - complex<double>(0, -f * f / M * T)*H0;
-    MatrixXcd U1 = block_encoding_method(A1);
-    MatrixXcd U2 = block_encoding_method(A2);
-    qc << matrix_decompose_qr(qvec, U1) << matrix_decompose_qr(qvec, U2); // Example, needs appropriate method
+    QMatrixXcd U1 = block_encoding_method(A1);
+    QMatrixXcd U2 = block_encoding_method(A2);
+    qc << matrix_decompose_qr(qvec, U1) << matrix_decompose_qr(qvec, U1); // Example, needs appropriate method
 }
 void discrete_step_with_trotter(QCircuit& qc, QVec& qvec, MatrixXd H0, MatrixXd H1, double f, int n, int M, double T) {
     int dim = H0.rows();
@@ -63,8 +62,8 @@ void discrete_step_with_trotter(QCircuit& qc, QVec& qvec, MatrixXd H0, MatrixXd 
         double s = static_cast<double>(m + 1) / M;
         MatrixXcd A1 =  I + complex<double>(0, -(1 - f) * f / M * T/DM)*H0;
         MatrixXcd A2 = I - complex<double>(0, -f * f / M * T/DM)*H0;
-        MatrixXcd U1 = block_encoding_method(A1);
-        MatrixXcd U2 = block_encoding_method(A2);
+        QMatrixXcd U1 = block_encoding_method(A1);
+        QMatrixXcd U2 = block_encoding_method(A2);
         qc << matrix_decompose_qr(qvec, U1) << matrix_decompose_qr(qvec, U2);
     }
      // Example, needs appropriate method
