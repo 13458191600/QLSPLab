@@ -159,12 +159,18 @@ bool verify_block_encoding(const MatrixXcd& U, const MatrixXcd& H, int s) {
 int main() {
     // Example of a sparse Hamiltonian H
     MatrixXcd H(2, 2);
-    H << complex<double>(1.0, 0.0), complex<double>(0.5, 0.0),
-         complex<double>(0.5, 0.0), complex<double>(0.0, 0.0);
+    // H << complex<double>(1.0, 0.0), complex<double>(0.5, 0.0),
+    //      complex<double>(0.5, 0.0), complex<double>(0.0, 0.0);
     // H << complex<double>(1.0, 0.0), complex<double>(0.5, 0.5), complex<double>(0.0, 0.0), complex<double>(0.0, 0.0),
     //      complex<double>(0.5, -0.5), complex<double>(1.0, 0.0), complex<double>(0.5, 0.5), complex<double>(0.0, 0.0),
     //      complex<double>(0.0, 0.0), complex<double>(0.5, -0.5), complex<double>(1.0, 0.0), complex<double>(0.5, 0.5),
     //      complex<double>(0.0, 0.0), complex<double>(0.0, 0.0), complex<double>(0.5, -0.5), complex<double>(1.0, 0.0);
+    // Hermitian matrix
+    // H << complex<double>(5, 0.0), complex<double>(0, 0.0),
+    //      complex<double>(0, 0.0), complex<double>(5, 0.0);
+    H << complex<double>(7, 0.0), complex<double>(-1, 0.0),
+         complex<double>(-1, 0.0), complex<double>(3, 0.0);
+    cout << "Hamiltonian H: \n" << H << endl;
 
     // Ensure the matrix is Hermitian
     if (!isHermitian(H)) {

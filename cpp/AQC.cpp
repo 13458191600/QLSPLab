@@ -82,7 +82,7 @@ int main() {
     qvm.init();
     auto qvec = qvm.qAllocMany(4);
     auto cbits = qvm.cAllocMany(4);
-    auto[N, an, n, normalized_b, d, T_, M_] = setting(A, b, T, M);
+    auto [N, an, n, normalized_b, d, T_, M_] = setting(A, b, T, M);
     MatrixXd H0 = get_H0(normalized_b);
     MatrixXd H1 = get_H1(A, normalized_b);
     auto circuit = QCircuit();
