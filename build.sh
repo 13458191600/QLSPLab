@@ -8,3 +8,4 @@ make -j4
 cd bin
 ./testQPanda
 echo "DONE"
+rm -rf build/
