@@ -201,14 +201,14 @@ if __name__ == '__main__':
     ## generate a random ermite matrix
     import numpy as np
 
-    A = np.random.rand(4,4)
-    A = A + A.T
+    A =np.array([[0.5, 0.5],[ 0.5, -0.5]])
+    # A = A + A.T
     print(A) 
 
     circ,alpha = fable(A)
-    # print(circ)
-    print(alpha)
-    print(A/alpha/4)
+    print(circ)
+    # print(alpha)
+    print(A/alpha/2)
     ## get the unitary matrix of a quantum circuit
 
     import numpy as np
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     # np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
     ## set the maximum number of columns to print
     np.set_printoptions(threshold=np.inf)
-    print(unitary_matrix[:4,:4])
+    print(unitary_matrix[:2,:2])
     print('difference:')
 
-    print(unitary_matrix[:4,:4] - A/alpha/4)
+    print(unitary_matrix[:2,:2] - A/alpha/2)

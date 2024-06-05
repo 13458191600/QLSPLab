@@ -62,7 +62,7 @@ int main() {
 #include <Eigen/SVD>
 // #include </usr/include/eigen3/unsupported/Eigen/MatrixFunctions>
 #include <math.h>
-#include <qaoaeancoding.h>
+// #include <qaoaeancoding.h>
 
 using namespace Eigen;
 using namespace std;

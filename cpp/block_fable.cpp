@@ -50,6 +50,7 @@ QCircuit compressed_uniform_rotation(const VectorXd& a, bool ry = true) {
     int n = static_cast<int>(log2(a.size()) / 2);
     auto qvm = initQuantumMachine(QMachineType::CPU);
     QCircuit circ;
+    int num_q = 2 * n + 1;
     auto qubits = qvm->allocateQubits(2 * n + 1);
 
     int i = 0;
@@ -58,9 +59,9 @@ QCircuit compressed_uniform_rotation(const VectorXd& a, bool ry = true) {
 
         if (a[i] != 0) {
             if (ry) {
-                circ << RY(qubits[0], a[i]);
+                circ << RY(qubits[num_q-1], a[i]);
             } else {
-                circ << RZ(qubits[0], a[i]);
+                circ << RZ(qubits[num_q-1], a[i]);
             }
         }
 
@@ -75,7 +76,7 @@ QCircuit compressed_uniform_rotation(const VectorXd& a, bool ry = true) {
 
         for (int j = 1; j <= 2 * n; ++j) {
             if (parity_check & (1 << (j - 1))) {
-                circ << CNOT(qubits[j], qubits[0]);
+                circ << CNOT(qubits[num_q-1-j], qubits[num_q-1]);
             }
         }
     }
@@ -116,32 +117,33 @@ pair<QCircuit, double> fable(MatrixXd a, double epsilon = -1) {
 
     QCircuit OA = compressed_uniform_rotation(vec_a);
     QCircuit circ;
-    auto qvm = initQuantumMachine(QMachineType::CPU);
-    auto qubits = qvm->allocateQubits(2 * logn + 1);
-
+    auto qvm = new CPUQVM();
+    qvm->init();
+    int num_q = 2 * logn + 1;
+    auto qubits = qvm->qAllocMany(2 * logn + 1);
+    // auto qubits = qvm->allocateQubits(2 * logn + 1);
+    // reverse(qubits.begin(), qubits.end());
     for (int i = 0; i < logn; ++i) {
-        circ << H(qubits[i + 1]);
+        circ << H(qubits[num_q-1-(i + 1)]);
     }
 
     circ << OA;
 
     for (int i = 0; i < logn; ++i) {
-        circ << SWAP(qubits[i + 1], qubits[i + logn + 1]);
+        circ << SWAP(qubits[num_q-1-(i + 1)], qubits[num_q-1-(i + logn + 1)]);
     }
 
     for (int i = 0; i < logn; ++i) {
-        circ << H(qubits[i + 1]);
+        circ << H(qubits[num_q-1-(i + 1)]);
     }
-
-    circ << circ.reverse_bits();
-
     return make_pair(circ, alpha);
 }
 
 
 int main() {
-    MatrixXd A = Random(4, 4);
-    A += A.transpose();
+    MatrixXd A(2, 2);
+    A << 1, -0.5,
+         -0.5, -0.5;
     cout << "Matrix A:" << endl << A << endl;
 
     auto result = fable(A);
@@ -154,14 +156,11 @@ int main() {
     auto qvm = initQuantumMachine(QMachineType::CPU);
     auto prog = QProg();
     prog << circ;
+    std::string text_picture = draw_qprog(prog);
+    std::cout << text_picture << std::endl;
     auto matrix = getCircuitMatrix(prog, qvm);
     cout << "Unitary matrix (top left 4x4):" << endl;
-    cout << matrix.topLeftCorner(4, 4) << endl;
-
-    // 打印差值
-    cout << "Difference:" << endl;
-    cout << matrix.topLeftCorner(4, 4) - A / alpha / 4 << endl;
-
+    cout << matrix<< endl;
     destroyQuantumMachine(qvm);
     return 0;
 }
