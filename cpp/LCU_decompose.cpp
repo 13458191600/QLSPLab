@@ -178,7 +178,7 @@ QProg block_encoding_LCU_pauli(const MatrixXcd& A) {
                 qc_all << X(ancillas[idx2]);
             }
         }
-        double angle = std::arg(coe);
+        double angle = arg(coe);
         for (size_t idx2 = 0; idx2 < pauli_basis.first.size(); ++idx2) {
             char _pauli_basis = pauli_basis.first[idx2];
             if (idx2 == 0) {
@@ -223,13 +223,13 @@ int main() {
     // Output results
     cout << "Matrix A:" << endl << A << endl;
     // Further code to simulate the quantum circuit and output results
-    std::string text_picture = draw_qprog(qc_all);
+    string text_picture = draw_qprog(qc_all);
 
-    std::cout << text_picture << std::endl;
+    cout << text_picture << endl;
 
     // Simulate the quantum circuit
     QStat cir_matrix = getCircuitMatrix(qc_all);
-    std::cout << std::fixed << std::setprecision(2);
+    cout << fixed << setprecision(2);
     int row = sqrt(cir_matrix.size());
     cout << "Circuit matrix:" << endl;
     for (int i = 0; i < row; i++) {

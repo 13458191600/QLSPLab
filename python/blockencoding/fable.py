@@ -201,7 +201,7 @@ if __name__ == '__main__':
     ## generate a random ermite matrix
     import numpy as np
 
-    A =np.array([[0.5, 0],[ 0, 0.5]])
+    A =np.array([[1+1j, -0.5+1j],[ -1, -0.5]])
     # A = A + A.T
     print(A) 
 

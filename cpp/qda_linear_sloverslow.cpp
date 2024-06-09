@@ -4,11 +4,19 @@
 #include <complex>
 #include "block_encoding.cpp"
 #include "initialize.h"
+#include <fstream>
 USING_QPANDA
 
 using namespace Eigen;
 using namespace std;
 typedef complex<double> Complex;
+
+
+struct qdals_res{
+    VectorXcd state; 
+    complex<double> fidelity;
+    qdals_res(VectorXcd s, complex<double> f): state(s), fidelity(f) {}
+};
 
 MatrixXcd get_H0(VectorXcd b) {
     MatrixXcd Q_b = MatrixXcd::Identity(b.size(), b.size()) - b * b.adjoint();
@@ -56,7 +64,14 @@ void discrete_step_with_trotter(QCircuit& qc, QVec& qvec, MatrixXcd H0, MatrixXc
 }
 
 
-pair<VectorXcd, double> qda_linear_solver(MatrixXcd A, VectorXcd b, double T=300, int M=200) {
+qdals_res qda_linear_solver(MatrixXcd A, VectorXcd b, double T=100, int M=200) {
+    VectorXcd target = A.colPivHouseholderQr().solve(b);
+    std::ofstream outFile("outputcpp.log");
+    if (!outFile) {
+        std::cerr << "无法打开文件!" << std::endl;
+        return qdals_res(VectorXcd(), 0);
+    }
+
     // if A shape is not 2^n, pad it with zeros and also pad b with zeros
     int dimA = A.rows(); // the dimension of A
     int n = static_cast<int>(log2(dimA)); // the number of qubits of single A
@@ -89,14 +104,21 @@ pair<VectorXcd, double> qda_linear_solver(MatrixXcd A, VectorXcd b, double T=300
     VectorXcd current_state = VectorXcd::Zero( b.size()* b.size());
     current_state.head(b.size()) = b;
     current_state.normalize();
-    int DM = 20;
+    int DM = 200;
     for (double m = 0; m < M; m++) {
         double s = (m + 1) / (double)M;
+        outFile << "The current s is: " << s << endl;
         for (int i = 0; i < DM; i++) {
             QProg circuit;
-            cout << "Iteration: " << m << " " << i << endl;
-            cout << "The current solution is: " << current_state << endl;
-            cout << "The norm of the quantum state is: " << current_state.norm() << endl;
+            // cout << "Iteration: " << m << " " << i << endl;
+            // cout << "The current solution is: " << current_state << endl;
+            for (int j = 0; j < current_state.size(); j++) {
+                outFile << current_state[j] << " ";
+                cout << current_state[j] << " ";
+            }
+            outFile << endl;
+            cout << endl;
+            // cout << "The norm of the quantum state is: " << current_state.norm() << endl;
             QVec qvec_tmp = QVec(qvec.end() - aqc_n ,qvec.end());
             initialize(circuit, qvec_tmp, current_state);
             circuit << X(qvec[all_n-1]) << X(qvec[all_n-1]);
@@ -105,35 +127,41 @@ pair<VectorXcd, double> qda_linear_solver(MatrixXcd A, VectorXcd b, double T=300
             int dim = H0.rows();
             double f = s;
             MatrixXcd I = MatrixXcd::Identity(dim, dim);
-            MatrixXcd A1 = I + Complex(0, -(1 - f) / (double)M * T/(double)DM) * H0;
-            MatrixXcd A2 = I + Complex(0, -f  / (double)M * T/(double)DM) * H1;
+
+            MatrixXcd A1 = I + Complex(0, -f  / (double)M * T/(double)DM) * H1;
+
             QMatrixXcd U1 = block_encoding_method(A1);
-            QMatrixXcd U2 = block_encoding_method(A2);
             // cout << "The matrix A1 is: \n" << A1 << endl;
             // cout << "The matrix U1 is: \n" << U1.block(0, 0, 4, 4) << endl;
             circuit << matrix_decompose_qr(qvec, U1); // 有可能是加反了
             VectorXcd state = getQuantumStates(qvm, circuit );
             current_state = state.head(2* b.size());
             current_state.normalize();
-            cout << "The current solution is: " << current_state << endl;
-            cout << "The norm of the quantum state is: " << current_state.norm() << endl;
+            for (int j = 0; j < current_state.size(); j++) {
+                outFile << current_state[j] << " ";
+                cout << current_state[j] << " ";
+            }
+            outFile << endl;
+            cout << endl;
+            // cout << "The norm of the quantum state is: " << current_state.norm() << endl;
             QProg secendcircuit;
             initialize(secendcircuit, qvec_tmp, current_state);
-            secendcircuit << matrix_decompose_qr(qvec, U2); // 有可能是加反了
+            MatrixXcd A0 = I + Complex(0, -(1 - f) / (double)M * T/(double)DM) * H0;
+            QMatrixXcd U0 = block_encoding_method(A0);
+            secendcircuit << matrix_decompose_qr(qvec, U0); // 有可能是加反了
             state = getQuantumStates(qvm, secendcircuit );
             current_state = state.head(2* b.size());
             current_state = current_state/ current_state.norm();
+            outFile.flush();
             // print the state norm
         }
     }
-    // calculate the distance between the current state and the target state
-    VectorXcd target_state(b.size());
-    target_state << 1, 1;
-    target_state.normalize();
-    VectorXcd final_state = current_state.head(b.size());
+    target.normalize();
+    VectorXcd final_state = current_state.head(dimA);
     final_state.normalize();
-    double distance = (final_state - target_state).norm();
-    return make_pair(current_state, distance);
+    complex<double> dotproduct = final_state.dot(target);
+    complex<double> distance = abs(dotproduct);
+    return qdals_res(final_state, distance);
 }
 
 int main() {
@@ -143,7 +171,7 @@ int main() {
     b << Complex(3, 0), Complex(1, 0);
     cout << "The matrix A is: \n" << A << endl;
     cout << "The vector b is: \n" << b << endl;
-    auto [state, distance] = qda_linear_solver(A, b);
-    cout << "The state is: " << state << endl;
-    cout << "The distance is: " << distance << endl;
+    qdals_res result = qda_linear_solver(A, b);
+    cout << "The state is: " << result.state << endl;
+    cout << "The distance is: " << result.fidelity << endl;
 }

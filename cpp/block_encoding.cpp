@@ -12,6 +12,16 @@ using namespace Eigen;
 int gray_code(int b) {
     return b ^ (b >> 1);
 }
+unsigned int reversebits2int(unsigned int num, int bitLength) {
+    bitset<32> bits(num); // 使用bitset处理32位整数
+    bitset<32> reversedBits;
+    // 反转比特串
+    for (int i = 0; i < bitLength; ++i) {
+        reversedBits[bitLength - 1 - i] = bits[i];
+    }
+    // 将反转后的比特串转换为整数
+    return reversedBits.to_ulong();
+}
 
 VectorXd gray_permutation(const VectorXd& a) {
     VectorXd b = VectorXd::Zero(a.size());
@@ -56,9 +66,9 @@ QCircuit compressed_uniform_rotation(const VectorXcd& a, bool ry = true) {
 
         if (a[i] != complex<double>(0, 0)) {
             if (ry) {
-                circ << RY(qubits[num_q - 1], a[i].real());  // 使用实部
+                circ << RY(qubits[0], a[i].real());  // 使用实部
             } else {
-                circ << RZ(qubits[num_q - 1], a[i].real());  // 使用实部
+                circ << RZ(qubits[0], a[i].real());  // 使用实部
             }
         }
 
@@ -73,7 +83,7 @@ QCircuit compressed_uniform_rotation(const VectorXcd& a, bool ry = true) {
 
         for (int j = 1; j <= 2 * n; ++j) {
             if (parity_check & (1 << (j - 1))) {
-                circ << CNOT(qubits[num_q - 1 - j], qubits[num_q - 1]);
+                circ << CNOT(qubits[j], qubits[0]);
             }
         }
     }
@@ -169,7 +179,7 @@ pair<QCircuit, double> fable(MatrixXcd a, double epsilon = -1) {
     auto qubits = qvm->qAllocMany(2 * logn + 1);
 
     for (int i = 0; i < logn; ++i) {
-        circ << H(qubits[num_q - 1 - (i + 1)]);
+        circ << H(qubits[(i + 1)]);
     }
     if (isreal) {
         circ << OAm;
@@ -180,11 +190,11 @@ pair<QCircuit, double> fable(MatrixXcd a, double epsilon = -1) {
     }
 
     for (int i = 0; i < logn; ++i) {
-        circ << SWAP(qubits[num_q - 1 - (i + 1)], qubits[num_q - 1 - (i + logn + 1)]);
+        circ << SWAP(qubits[(i + 1)], qubits[(i + logn + 1)]);
     }
 
     for (int i = 0; i < logn; ++i) {
-        circ << H(qubits[num_q - 1 - (i + 1)]);
+        circ << H(qubits[(i + 1)]);
     }
     return make_pair(circ, alpha);
 }
@@ -197,15 +207,14 @@ MatrixXcd block_encoding_method(MatrixXcd A) {
     auto qvm = initQuantumMachine(QMachineType::CPU);
     auto prog = QProg();
     prog << circ;
-    // string text_picture = draw_qprog(prog);
-    // cout << text_picture << endl;
     auto matrix = getCircuitMatrix(prog, qvm);
+    // cout << "matrix: " << matrix << endl;
     int num_qubits = log2(sqrt(matrix.size()));
     int num_rows = pow(2, num_qubits);
     MatrixXcd matrix_eigen = MatrixXcd::Zero(num_rows, num_rows);
     for (int i = 0; i < num_rows; i++) {
         for (int j = 0; j < num_rows; j++) {
-            matrix_eigen(i, j) = matrix[i+j*num_rows];
+            matrix_eigen(i, j) = matrix[reversebits2int(i,num_qubits)+reversebits2int(j,num_qubits)*num_rows];
         }
     }
     destroyQuantumMachine(qvm);
@@ -213,28 +222,8 @@ MatrixXcd block_encoding_method(MatrixXcd A) {
 }
 
 
-pair<MatrixXcd,QCircuit> block_encoding_circuit(MatrixXcd A) {
+QCircuit block_encoding_circuit(MatrixXcd A) {
     auto result = fable(A);
     QCircuit circ = result.first;
-    double alpha = result.second;
-    // 生成量子电路的矩阵表示
-    auto qvm = initQuantumMachine(QMachineType::CPU);
-    auto prog = QProg();
-    prog << circ;
-    string text_picture = draw_qprog(prog);
-    cout << text_picture << endl;
-    auto matrix = getCircuitMatrix(prog, qvm);
-    int num_qubits = log2(sqrt(matrix.size()));
-    int num_rows = pow(2, num_qubits);
-    MatrixXcd matrix_eigen = MatrixXcd::Zero(num_rows, num_rows);
-    for (int i = 0; i < num_rows; i++) {
-        for (int j = 0; j < num_rows; j++) {
-            matrix_eigen(i, j) = matrix[i+j*num_rows];
-        }
-    }
-    destroyQuantumMachine(qvm);
-    // cout << matrix_eigen << endl;
-    // cout << matrix_eigen.size() << endl;
-    return {matrix_eigen,circ};
+    return circ;
 }
-

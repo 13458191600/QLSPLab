@@ -54,38 +54,39 @@ void initialize(QProg& qc, QVec& qvec, VectorXcd bvec) {
             break;
         }
     }
-    vector<double> bamp(bvec.size());
-    vector<double> bphase(bvec.size());
+    vector<long double> bamp(bvec.size());
+    vector<long double> bphase(bvec.size());
     if (isreal) {
         for (int i = 0; i < bvec.size(); i++) {
             bamp[i] = bvec[i].real();
         }
-        encode_b.amplitude_encode(qvec, bamp);
+        long double norm = 0;
+        for (int i = 0; i < bamp.size(); i++) {
+            norm += (bamp[i]) *(bamp[i]);
+        }
+        norm = sqrt(norm);
+        vector<double> bampdouble(bvec.size());
+        // cout << "The amplitude of initial state is: " << norm << endl;
+        for (int i = 0; i < bamp.size(); i++) {
+            bampdouble[i] = bamp[i]/norm;
+        }
+        encode_b.amplitude_encode(qvec, bampdouble);
         qc << encode_b.get_circuit();
     }else{
         for (int i = 0; i < bvec.size(); i++) {
             bamp[i] = abs(bvec[i]);
             bphase[i] = arg(bvec[i]);
         }
-
-        // check the bamp has a norm of 1
-        double norm = 0;
+        long double norm = 0;
         for (int i = 0; i < bamp.size(); i++) {
             norm += (bamp[i]) *(bamp[i]);
         }
         norm = sqrt(norm);
-        cout << "The amplitude of initial state is: " << norm << endl;
+        vector<double> bampdouble(bvec.size());
         for (int i = 0; i < bamp.size(); i++) {
-            bamp[i] =bamp[i]/norm;
+            bampdouble[i] = bamp[i]/norm;
         }
-        norm = 0;
-        for (int i = 0; i < bamp.size(); i++) {
-            norm += bamp[i] * bamp[i];
-        }
-        cout << fixed << setprecision(32);
-        norm = sqrt(norm);
-        cout << "norm is " << norm << endl;
-        if (abs(norm - 1) > epsm) {
+        if (abs(pow(norm, 2) - 1) > 1e-10) {
             cout << "Error: the amplitude of initial state is not normalized!" << endl;
             char format_str[64] = { 0 };
             cout << fixed << setprecision(32);
@@ -94,7 +95,7 @@ void initialize(QProg& qc, QVec& qvec, VectorXcd bvec) {
             throw length_error(format_str);
             return;
         }
-        encode_b.amplitude_encode(qvec, bamp);
+        encode_b.amplitude_encode(qvec, bampdouble);
         qc << encode_b.get_circuit();
 
         QMatrixXcd P = QMatrixXcd::Zero(bphase.size(), bphase.size());
@@ -104,6 +105,7 @@ void initialize(QProg& qc, QVec& qvec, VectorXcd bvec) {
         }
         qc << matrix_decompose_qr(qvec, P);
     }
+    reverse(qvec.begin(), qvec.end());
 }
 
 VectorXcd getQuantumStates( QuantumMachine * qvm, QProg& prog) {
@@ -141,7 +143,7 @@ void printUnitary(QProg& prog) {
 //     VectorXcd iniState = VectorXcd::Random(pow(2,2));
 //     iniState.normalize();
 //     cout << "The initial state is: " << iniState << endl;
-//     QCircuit cir;
+//     QProg cir;
 //     QVec qvec_tmp = QVec(qvec.begin(), qvec.begin()+2);
 //     initialize(cir, qvec, iniState);
 //     cir << X(qvec[2]) << X(qvec[2]);
