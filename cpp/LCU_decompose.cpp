@@ -148,10 +148,10 @@ QProg block_encoding_LCU_pauli(const MatrixXcd& A) {
     qvm->init();
     auto qubits = qvm->qAllocMany((int)abs_alphas.size());
     // reverse(qubits.begin(), qubits.end());
-    auto encode_qubits = vector<Qubit*>(qubits.begin()+qnum_ancilla , qubits.begin()+qnum_encode+qnum_ancilla );
+    auto encode_qubits = vector<Qubit*>(qubits.begin() , qubits.begin()+qnum_encode);
     // reverse(encode_qubits.begin(), encode_qubits.end());
-    auto ancillas = vector<Qubit*>(qubits.begin(), qubits.begin() +qnum_ancilla);
-    reverse(ancillas.begin(), ancillas.end());
+    auto ancillas = vector<Qubit*>(qubits.begin()+qnum_encode, qubits.begin()+qnum_encode+qnum_ancilla);
+    // reverse(ancillas.begin(), ancillas.end());
     // encode the alphas by amplitude encoding
     Encode encode_b;
     encode_b.amplitude_encode(ancillas, abs_alphas);
@@ -181,14 +181,21 @@ QProg block_encoding_LCU_pauli(const MatrixXcd& A) {
         double angle = std::arg(coe);
         for (size_t idx2 = 0; idx2 < pauli_basis.first.size(); ++idx2) {
             char _pauli_basis = pauli_basis.first[idx2];
-            
-            if (_pauli_basis == 'X') {
-                qc_all << RX(encode_qubits[idx2],-angle).control(ancillas);
-            } else if (_pauli_basis == 'Y') {
-                qc_all << RY(encode_qubits[idx2],-angle).control(ancillas);
-            } else if (_pauli_basis == 'Z') {
-                qc_all << RZ(encode_qubits[idx2],-angle).control(ancillas);
+            if (idx2 == 0) {
+                // a global phase gate
+                qc_all << U1(encode_qubits[idx2],angle).control(ancillas);
+                qc_all << X(encode_qubits[idx2]).control(ancillas);
+                qc_all << U1(encode_qubits[idx2],angle).control(ancillas);
+                qc_all << X(encode_qubits[idx2]).control(ancillas);
             }
+            if (_pauli_basis == 'X') {
+                qc_all << X(encode_qubits[idx2]).control(ancillas);
+            } else if (_pauli_basis == 'Y') {
+                qc_all << Y(encode_qubits[idx2]).control(ancillas);
+            } else if (_pauli_basis == 'Z') {
+                qc_all << Z(encode_qubits[idx2]).control(ancillas);
+            }
+            
         }
         for (size_t idx2 = 0; idx2 < qnum_ancilla; ++idx2) {
             if (bit_str[idx2] == '0') {
@@ -207,11 +214,9 @@ QProg block_encoding_LCU_pauli(const MatrixXcd& A) {
 int main() {
 
     // Define test matrix A
-    MatrixXcd A(4, 4);
-    A << complex<double>(0.5, 0), complex<double>(-0.5, 0), complex<double>(0.5, 0), complex<double>(-0.5, 0),
-         complex<double>(0.5, 0), complex<double>(-0.5, 0), complex<double>(0.5, 0), complex<double>(0.5, 0),
-         complex<double>(0.5, 0), complex<double>(-0.5, 0), complex<double>(0.5, 0), complex<double>(-0.5, 0),
-         complex<double>(0.5, 0), complex<double>(-0.5, 0), complex<double>(0.5, 0), complex<double>(0.5, 0);
+    MatrixXcd A(2, 2);
+    A << complex<double>(0.5, 0), complex<double>(-0.8, 0), 
+         complex<double>(-0.8, 0), complex<double>(0.5, 0);
 
     QProg qc_all = block_encoding_LCU_pauli(A);
 
@@ -224,15 +229,15 @@ int main() {
 
     // Simulate the quantum circuit
     QStat cir_matrix = getCircuitMatrix(qc_all);
-
-    // 打印矩阵信息 4行4列
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            cout << cir_matrix[16*i, 16*j] << " ";
+    std::cout << std::fixed << std::setprecision(2);
+    int row = sqrt(cir_matrix.size());
+    cout << "Circuit matrix:" << endl;
+    for (int i = 0; i < row; i++) {
+        for (int j = 0; j < row; j++) {
+            cout << cir_matrix[i*row+j] << " ";
         }
         cout << endl;
     }
-    return 0;
 }
 
 

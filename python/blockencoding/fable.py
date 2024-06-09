@@ -201,7 +201,7 @@ if __name__ == '__main__':
     ## generate a random ermite matrix
     import numpy as np
 
-    A =np.array([[0.5, 0.5],[ 0.5, -0.5]])
+    A =np.array([[0.5, 0],[ 0, 0.5]])
     # A = A + A.T
     print(A) 
 
@@ -223,12 +223,15 @@ if __name__ == '__main__':
 
     # Example usage
     unitary_matrix = get_unitary_matrix(circ)
+    print(circ.draw())
     ## set the print options to print the matrix in a cleaner format
     # np.set_printoptions(precision=3, suppress=True)
     # np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
     ## set the maximum number of columns to print
     np.set_printoptions(threshold=np.inf)
-    print(unitary_matrix[:2,:2])
+    ## 
+    np.set_printoptions(precision=3, suppress=True)
+    print(unitary_matrix.data)
     print('difference:')
 
     print(unitary_matrix[:2,:2] - A/alpha/2)
